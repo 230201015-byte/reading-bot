@@ -1,26 +1,34 @@
+import os
+import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
+# ================== CONFIG ==================
 SHEET_NAME = "Reading Marathon"
-DATA_SHEET_NAME = "sheet1"   # ❗ ЛИСТ ДЛЯ ВВОДА ДАННЫХ (ЗАКРЫТЫЙ)
+DATA_SHEET_NAME = "sheet1"
+
+# ================== AUTH ==================
+creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+if not creds_json:
+    raise Exception("❌ GOOGLE_CREDENTIALS не задана!")
+
+try:
+    creds_dict = json.loads(creds_json)
+except json.JSONDecodeError:
+    raise Exception("❌ GOOGLE_CREDENTIALS содержит невалидный JSON!")
 
 scope = [
     "https://spreadsheets.google.com/feeds",
     "https://www.googleapis.com/auth/drive",
 ]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(
-    "credentials.json",
-    scope
-)
-
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 spreadsheet = client.open(SHEET_NAME)
-
-# ⚠️ ЯВНО указываем лист
 data_sheet = spreadsheet.worksheet(DATA_SHEET_NAME)
 
+# ================== DATA ==================
 GENDER_MAP = {
     "Әлішер": "male",
     "Нұрхасан": "male",
@@ -30,9 +38,9 @@ GENDER_MAP = {
     "Әсем": "female",
 }
 
-def add_record(name: str, date_str: str, pages: str):
+# ================== FUNCTIONS ==================
+def add_record(name: str, date_str: str, pages: int):
     gender = GENDER_MAP.get(name, "unknown")
-
     data_sheet.append_row([
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         name,
